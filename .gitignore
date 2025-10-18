@@ -1,0 +1,7 @@
+# Ignorer venv og output
+venv/
+__pycache__/
+output/
+
+# macOS systemfiler
+.DS_Store
