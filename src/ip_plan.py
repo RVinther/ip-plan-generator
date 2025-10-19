@@ -1,5 +1,6 @@
 import ipaddress
 import csv
+import os
 from datetime import datetime
 from tabulate import tabulate
 
@@ -17,9 +18,11 @@ def generate_ip_plan(network_input, new_prefix):
         plan.append({
             "Subnet": str(subnet),
             "Network": str(subnet.network_address),
-            "Gateway": str(hosts[0]),
-            "First Host": str(hosts[1]) if len(hosts) > 2 else str(hosts[0]),
-            "Last Host": str(hosts[-1]),
+            "Subnet Mask": str(subnet.netmask),
+            "Wildcard Mask": str(ipaddress.IPv4Address(int(subnet.hostmask))),
+            "Gateway": str(hosts[0]) if hosts else "-",
+            "First Host": str(hosts[1]) if len(hosts) > 1 else "-",
+            "Last Host": str(hosts[-1]) if hosts else "-",
             "Broadcast": str(subnet.broadcast_address),
             "Hosts": len(hosts)
         })
@@ -27,6 +30,7 @@ def generate_ip_plan(network_input, new_prefix):
     return plan
 
 def save_to_csv(plan):
+    os.makedirs("output", exist_ok=True)
     filename = f"output/ip_plan_{datetime.now().strftime('%Y-%m-%d')}.csv"
     with open(filename, mode='w', newline='') as file:
         writer = csv.DictWriter(file, fieldnames=plan[0].keys())
@@ -46,7 +50,22 @@ def save_to_markdown(plan):
 def main():
     print("=== IP Plan Generator ===")
     network_input = input("Indtast netværk (fx 10.10.0.0/16): ")
-    new_prefix = int(input("Ønsket subnet (fx 24): "))
+
+    try:
+        new_prefix = int(input("Ønsket subnet (fx 24): "))
+    except ValueError:
+        print("[X] Ugyldigt input – subnet skal være et tal, fx 24.")
+        return
+
+    try:
+        network = ipaddress.ip_network(network_input)
+    except ValueError:
+        print("[X] Ugyldigt netværk. Husk at inkludere CIDR, fx 192.168.0.0/24.")
+        return
+    
+    if new_prefix <= network.prefixlen:
+        print(f"[X] Ugyldigt: {new_prefix} skal være større end {network.prefixlen} for at dele netværket op.")
+        return
 
     plan = generate_ip_plan(network_input, new_prefix)
     print("\nEksempel:")
